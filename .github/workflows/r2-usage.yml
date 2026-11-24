@@ -32,3 +32,12 @@ jobs:
         run: |
           echo "::error::R2 storage at ${{ steps.r2.outputs.storage_gb }} GB is over the 90 percent safeguard line."
           exit 1
+      - name: Heartbeat to healthchecks.io (dead-man's switch)
+        env:
+          HC_PING_URL: ${{ secrets.HC_PING_R2 }}
+        run: |
+          if [ -n "$HC_PING_URL" ]; then
+            curl -fsS -m 10 "$HC_PING_URL" > /dev/null && echo "healthchecks heartbeat sent"
+          else
+            echo "HC_PING_R2 secret not set yet - heartbeat skipped"
+          fi
