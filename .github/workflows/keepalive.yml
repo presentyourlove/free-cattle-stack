@@ -25,3 +25,12 @@ jobs:
         env:
           SIMULAR_API_KEY: ${{ secrets.SIMULAR_API_KEY }}
         run: python3 scripts/simular_wake.py
+      - name: Heartbeat to healthchecks.io (dead-man's switch)
+        env:
+          HC_PING_URL: ${{ secrets.HC_PING_KEEPALIVE }}
+        run: |
+          if [ -n "$HC_PING_URL" ]; then
+            curl -fsS -m 10 "$HC_PING_URL" > /dev/null && echo "healthchecks heartbeat sent"
+          else
+            echo "HC_PING_KEEPALIVE secret not set yet - heartbeat skipped"
+          fi
