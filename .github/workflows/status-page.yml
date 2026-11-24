@@ -1,0 +1,36 @@
+name: status-page
+
+# Regenerates the GitHub Pages status page (docs/index.html) with live
+# probe results every 6 hours and commits it back if anything changed.
+on:
+  schedule:
+    - cron: "42 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Probe services and rebuild status page
+        env:
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: python3 scripts/status_page.py
+
+      - name: Commit page if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/index.html
+          if git diff --cached --quiet; then
+            echo "status page unchanged"
+          else
+            git commit -m "chore: refresh status page"
+            git push
+          fi
