@@ -1,0 +1,24 @@
+name: models-verify
+
+# One-off proof that the GitHub Models PAT stored in the GH_MODELS_PAT
+# repo secret really works against the live API: the step only passes
+# when the model returns the exact distinctive code asked for.
+on:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call GitHub Models with the stored PAT
+        env:
+          PAT: ${{ secrets.GH_MODELS_PAT }}
+        run: |
+          resp=$(curl -sS -w '\n%{http_code}' https://models.github.ai/inference/chat/completions \
+            -H "Authorization: Bearer $PAT" \
+            -H 'Content-Type: application/json' \
+            -d '{"model":"openai/gpt-4o-mini","messages":[{"role":"user","content":"Reply with exactly this code and nothing else: OTTER-5521"}],"max_tokens":16}')
+          echo "$resp"
+          code=$(echo "$resp" | tail -n 1)
+          body=$(echo "$resp" | sed '$d')
+          test "$code" = "200" && echo "$body" | grep -q 'OTTER-5521' && echo "PAT verified: live model returned the exact code"
