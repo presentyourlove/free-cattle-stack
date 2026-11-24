@@ -1,0 +1,27 @@
+name: keepalive
+# Keeps the free-tier army awake:
+# - Supabase free projects pause after 7 days idle -> ping every 3 days
+# - Simular box is deleted after 14 consecutive days asleep -> wake it in the same run
+# - Health-checks the Worker gateway and the Northflank always-on service
+on:
+  schedule:
+    - cron: "17 3 */3 * *"   # every 3 days, 03:17 UTC (Actions cron can drift; fine here)
+  workflow_dispatch:
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ping Worker gateway health
+        run: curl -sf "https://free-cattle-gateway.jasonwth0928.workers.dev/health" && echo " <- worker ok"
+      - name: Ping Northflank health
+        run: curl -sf "https://p01--free-cattle-stack--54fcgkkc2jbh.code.run/health" && echo " <- northflank ok"
+      - name: Ping Supabase (counts as project activity)
+        run: |
+          curl -sf -H "apikey: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}" \
+            "https://nvraifaypheugzstdetg.supabase.co/rest/v1/tasks?select=id&limit=1" \
+            && echo " <- supabase ok"
+      - name: Wake Simular box
+        env:
+          SIMULAR_API_KEY: ${{ secrets.SIMULAR_API_KEY }}
+        run: python3 scripts/simular_wake.py
