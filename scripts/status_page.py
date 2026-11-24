@@ -24,7 +24,12 @@ R2_FREE_GB = 10.0
 
 
 def http_get(url, headers=None, timeout=20):
-    req = urllib.request.Request(url, headers=headers or {})
+    # Cloudflare's edge returns 403 (error 1010, "bad browser") to
+    # urllib's default "Python-urllib/3.x" User-Agent, so the Workers
+    # probe would always read as down. Send a plain browser-like UA.
+    merged = {"User-Agent": "free-cattle-status/1.0 (+https://presentyourlove.github.io/free-cattle-stack/)"}
+    merged.update(headers or {})
+    req = urllib.request.Request(url, headers=merged)
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         return resp.status, resp.read().decode("utf-8", "replace")
 
